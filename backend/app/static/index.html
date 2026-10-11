@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeInsight - RAG-Powered Codebase Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .code-line { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.6; }
+        .slide-in { animation: slideIn 0.25s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .animate-slideIn { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body class="min-h-screen pb-12 flex">
+    <main class="flex-1 max-w-4xl mx-auto p-6 space-y-8">
+        <!-- Header -->
+        <header class="border-b border-gray-200 pb-6 mb-8 mt-4">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 tracking-tight">CodeInsight</h1>
+                    <p class="text-gray-500 mt-1">RAG-Powered Codebase Understanding Assistant</p>
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex gap-4 text-sm">
+                    <div class="flex flex-col items-center">
+                        <span class="text-gray-400 font-semibold text-xs uppercase">Total Files</span>
+                        <span id="stat-files" class="text-blue-600 font-bold">0</span>
+                    </div>
+                    <div class="w-px bg-gray-200"></div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-gray-400 font-semibold text-xs uppercase">Total Chunks</span>
+                        <span id="stat-chunks" class="text-blue-600 font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Step 1 -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                Index Repository
+            </h2>
+            <div class="flex gap-3">
+                <input type="text" id="repo-url" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., https://github.com/user/repo" />
+                <button id="btn-index" class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-6 py-2 rounded-lg font-medium transition-colors">Index</button>
+            </div>
+            <div id="index-progress" class="mt-4 hidden">
+                <div id="index-status" class="text-sm text-gray-600 mb-2">Processing...</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div class="bg-blue-500 h-2 rounded-full w-full animate-pulse"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2 -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                Ask Questions
+            </h2>
+            <div class="space-y-4">
+                <textarea id="question-input" class="w-full border border-gray-300 rounded-lg p-4 h-32 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Ask a question about the indexed codebase..."></textarea>
+                
+                <div class="flex justify-between items-center">
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button id="mode-proposed" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white shadow text-gray-900">Proposed (Strict)</button>
+                        <button id="mode-baseline" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700">Baseline (Naive)</button>
+                    </div>
+                    <button id="btn-ask" class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-8 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">Ask</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- History -->
+        <div id="history-container" class="space-y-6 hidden">
+            <h3 class="text-xl font-bold text-gray-800 border-b pb-2">Conversation History</h3>
+            <div id="history-list" class="space-y-6"></div>
+        </div>
+    </main>
+
+    <!-- Code Viewer Panel -->
+    <div id="code-panel" class="fixed inset-y-0 right-0 w-[600px] bg-white shadow-2xl border-l border-gray-200 flex flex-col slide-in z-40 hidden">
+        <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+            <h3 id="code-panel-file" class="font-mono text-sm text-gray-700 truncate mr-4"></h3>
+            <button id="btn-close-code" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div class="flex-1 overflow-auto bg-[#1e1e1e] text-gray-300 p-4 relative">
+            <div id="code-panel-content" class="code-line relative"></div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentMode = 'proposed';
+        let isIndexing = false;
+        let isAsking = false;
+
+        function addToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slideIn';
+            toast.innerHTML = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span class="text-sm font-medium">${message}</span>`;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch(`${API_BASE}/stats`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('stat-files').innerText = data.total_files.toLocaleString();
+                    document.getElementById('stat-chunks').innerText = data.total_chunks.toLocaleString();
+                }
+            } catch (err) {}
+        }
+        fetchStats();
+
+        // Mode toggling
+        document.getElementById('mode-proposed').onclick = (e) => {
+            currentMode = 'proposed';
+            e.target.className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white shadow text-gray-900';
+            document.getElementById('mode-baseline').className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700';
+        };
+        document.getElementById('mode-baseline').onclick = (e) => {
+            currentMode = 'baseline';
+            e.target.className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white shadow text-gray-900';
+            document.getElementById('mode-proposed').className = 'px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700';
+        };
+
+        // Indexing
+        document.getElementById('btn-index').onclick = async () => {
+            const url = document.getElementById('repo-url').value;
+            if (!url || isIndexing) return;
+            isIndexing = true;
+            document.getElementById('btn-index').disabled = true;
+            document.getElementById('index-progress').classList.remove('hidden');
+            document.getElementById('index-status').innerText = 'Starting indexing job...';
+            
+            try {
+                const res = await fetch(`${API_BASE}/index`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repo_url: url })
+                });
+                if (!res.ok) throw new Error('Failed to start indexing');
+                const { job_id } = await res.json();
+                
+                const poll = setInterval(async () => {
+                    const statusRes = await fetch(`${API_BASE}/index/status/${job_id}`);
+                    if (statusRes.ok) {
+                        const { status } = await statusRes.json();
+                        document.getElementById('index-status').innerText = status;
+                        if (status.toLowerCase().includes('complete') || status.toLowerCase().includes('done')) {
+                            clearInterval(poll);
+                            isIndexing = false;
+                            document.getElementById('btn-index').disabled = false;
+                            fetchStats();
+                        } else if (status.toLowerCase().includes('fail') || status.toLowerCase().includes('error')) {
+                            clearInterval(poll);
+                            isIndexing = false;
+                            document.getElementById('btn-index').disabled = false;
+                            addToast(`Indexing failed: ${status}`);
+                        }
+                    }
+                }, 1000);
+            } catch (err) {
+                addToast(err.message);
+                isIndexing = false;
+                document.getElementById('btn-index').disabled = false;
+                document.getElementById('index-progress').classList.add('hidden');
+            }
+        };
+
+        // Asking
+        document.getElementById('btn-ask').onclick = async () => {
+            const q = document.getElementById('question-input').value;
+            if (!q || isAsking) return;
+            isAsking = true;
+            const btn = document.getElementById('btn-ask');
+            btn.disabled = true;
+            btn.innerText = 'Thinking...';
+            
+            try {
+                const res = await fetch(`${API_BASE}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: q, mode: currentMode, k: 5 })
+                });
+                if (!res.ok) throw new Error('Failed to get answer');
+                const data = await res.json();
+                
+                document.getElementById('history-container').classList.remove('hidden');
+                document.getElementById('question-input').value = '';
+                
+                renderCard({ question: q, ...data });
+            } catch (err) {
+                addToast(err.message);
+            } finally {
+                isAsking = false;
+                btn.disabled = false;
+                btn.innerText = 'Ask';
+            }
+        };
+
+        function renderCard(data) {
+            const isSupported = data.status === 'SUPPORTED';
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden';
+            
+            let citationsHTML = '';
+            if (data.citations && data.citations.length > 0) {
+                let chips = data.citations.map(c => 
+                    `<button onclick="openCodePanel('${c.file}', ${c.start}, ${c.end})" class="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-md text-xs font-mono text-gray-700 transition-colors">
+                        <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        ${c.file.split('/').pop()} (${c.start}-${c.end})
+                    </button>`
+                ).join('');
+                citationsHTML = `
+                    <div class="mb-6 border-t pt-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">Citations ${data.citation_valid === false ? '<span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded">Invalid</span>' : ''}</h4>
+                        <div class="flex flex-wrap gap-2">${chips}</div>
+                    </div>`;
+            }
+
+            let filesHTML = '';
+            if (data.retrieved_files && data.retrieved_files.length > 0) {
+                let lis = data.retrieved_files.map(f => `<li>${f}</li>`).join('');
+                filesHTML = `
+                    <details class="group">
+                        <summary class="text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-900 select-none flex items-center">Retrieved Files (${data.retrieved_files.length})</summary>
+                        <div class="mt-2 pl-5"><ul class="list-disc text-xs text-gray-500 space-y-1 font-mono">${lis}</ul></div>
+                    </details>`;
+            }
+
+            card.innerHTML = `
+                <div class="bg-gray-50 p-4 border-b border-gray-100">
+                    <p class="font-medium text-gray-900">Q: ${data.question}</p>
+                </div>
+                <div class="p-6">
+                    <div class="flex flex-wrap items-center gap-4 mb-4">
+                        <span class="px-3 py-1 text-xs font-bold uppercase rounded-full ${isSupported ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${data.status}</span>
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <span class="font-medium">Confidence:</span>
+                            <div class="w-32 bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full ${isSupported ? 'bg-green-500' : 'bg-amber-500'}" style="width: ${Math.round(data.confidence * 100)}%"></div>
+                            </div>
+                            <span>${Math.round(data.confidence * 100)}%</span>
+                        </div>
+                        ${data.overlap_score !== undefined ? `<div class="text-sm text-gray-600 border-l pl-4 border-gray-200"><span class="font-medium">Overlap Score:</span> ${data.overlap_score.toFixed(2)}</div>` : ''}
+                    </div>
+                    <div class="prose prose-sm max-w-none text-gray-800 mb-6 text-pre-wrap">${data.answer.split('\n').join('<br>')}</div>
+                    ${citationsHTML}
+                    <div class="space-y-2">${filesHTML}</div>
+                </div>
+            `;
+            const list = document.getElementById('history-list');
+            list.insertBefore(card, list.firstChild);
+        }
+
+        // Code Panel
+        document.getElementById('btn-close-code').onclick = () => {
+            document.getElementById('code-panel').classList.add('hidden');
+        };
+
+        window.openCodePanel = async (file, start, end) => {
+            document.getElementById('code-panel').classList.remove('hidden');
+            document.getElementById('code-panel-file').innerText = file;
+            document.getElementById('code-panel-content').innerHTML = '<div class="text-gray-400 text-center mt-10">Loading context...</div>';
+            
+            try {
+                const fetchStart = Math.max(1, start - 15);
+                const fetchEnd = end + 15;
+                const res = await fetch(`${API_BASE}/file?filepath=${encodeURIComponent(file)}&start_line=${fetchStart}&end_line=${fetchEnd}`);
+                if (!res.ok) throw new Error('Failed to fetch file');
+                const data = await res.json();
+                
+                let html = '';
+                const lines = data.content.split('\n');
+                lines.forEach((line, idx) => {
+                    const lineNum = fetchStart + idx;
+                    const isHighlighted = lineNum >= start && lineNum <= end;
+                    html += `
+                        <div class="flex ${isHighlighted ? 'bg-[#3e3e24] text-gray-100' : ''}">
+                            <span class="w-12 flex-shrink-0 text-right pr-4 text-gray-600 select-none">${lineNum}</span>
+                            <span class="whitespace-pre flex-1">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;') || ' '}</span>
+                        </div>`;
+                });
+                document.getElementById('code-panel-content').innerHTML = html;
+            } catch (err) {
+                addToast('Error loading code context');
+                document.getElementById('code-panel-content').innerHTML = '';
+            }
+        };
+    </script>
+</body>
+</html>

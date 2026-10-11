@@ -1,0 +1,25 @@
+# Core
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
+# Repository cloning
+gitpython
+requests
+
+# ML / Embeddings
+sentence-transformers
+numpy
+scikit-learn
+
+# Retrieval
+rank-bm25
+networkx
+rapidfuzz
+
+# Testing
+pytest
+
+# Data
+pandas

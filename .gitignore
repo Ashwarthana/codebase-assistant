@@ -1,0 +1,59 @@
+# Environments & Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables & secrets
+.env
+backend/.env
+*.env
+!.env.example
+!backend/.env.example
+
+# Runtime & Indexing data
+backend/repo_data/
+backend/index_data/
+backend/data/
+repo_data/
+index_data/
+data/
+
+# Python cache & Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Logs & Test outputs
+*.log
+*.log.txt
+server_log.txt
+test_output*.txt
+
+# Executables, Installers & Windows Shortcuts
+*.exe
+OllamaSetup.exe
+*.dll
+*.lnk
+This PC.lnk
+
+# OS & Editor Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
