@@ -1,4 +1,4 @@
-# 🧠 Codebase Understanding Assistant
+#  Codebase Understanding Assistant
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com/)
@@ -10,7 +10,7 @@ An end-to-end, full-stack **Grounded Retrieval-Augmented Generation (RAG) Codeba
 
 ---
 
-## 🌟 Key Highlights
+##  Key Highlights
 
 - **Full-Stack Application**:
   - **Backend**: FastAPI REST API providing asynchronous indexing, multi-stage hybrid retrieval, and multi-LLM generation.
@@ -34,7 +34,7 @@ An end-to-end, full-stack **Grounded Retrieval-Augmented Generation (RAG) Codeba
 
 ---
 
-## 🏗️ Architecture & Pipeline
+##  Architecture & Pipeline
 
 ```mermaid
 flowchart TD
@@ -111,7 +111,7 @@ codebase-assistant/
 
 ---
 
-## 🚀 Quick Start Guide
+##  Quick Start Guide
 
 ### 1. Prerequisites
 - Python 3.10+
@@ -192,7 +192,7 @@ python scripts/smoke_test.py
 
 ---
 
-## 🧪 Evaluation Metrics & Benchmarks
+##  Evaluation Metrics & Benchmarks
 
 The accompanying notebooks (`ta_last_updated.ipynb`) evaluate the system on:
 - **CodeSearchNet**: Pretrained embedding evaluation ($Hit@1, Hit@3, Hit@5$).
