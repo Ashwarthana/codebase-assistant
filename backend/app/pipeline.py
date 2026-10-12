@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────
 
-RETRIEVAL_CONFIDENCE_THRESHOLD = 0.35  # Lower than before since RRF scores differ
+RETRIEVAL_CONFIDENCE_THRESHOLD = 0.05  # Calibrated for cross-encoder probability on code snippets
 
 _WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
 _GENERIC_CODE_WORDS = {
@@ -303,8 +303,8 @@ def answer_question_proposed(
             "overlap_score": 0.0,
         }
 
-    # Expand context via call graph and limit to 10 chunks to allow more file context
-    context_chunks = retriever.expand_with_call_graph(top, hops=hops)[:10]
+    # Expand context via call graph - include all connected chunks for complete coverage
+    context_chunks = retriever.expand_with_call_graph(top, hops=hops)
     prompt = build_grounded_prompt(query, context_chunks)
 
     # Generate
@@ -392,8 +392,8 @@ def answer_question_baseline(
     """BASELINE pipeline: semantic-only retrieval → simple prompt → raw answer."""
     top = retriever.semantic_search(query, k=k)
     top_score = top[0][1] if top else -1.0
-    retrieved_files = [c["file"] for c, _ in top[:10]]
-    context_chunks = [c for c, _ in top[:10]]
+    retrieved_files = [c["file"] for c, _ in top]
+    context_chunks = [c for c, _ in top]
 
     blocks = [
         f"# {c['file']}:{c['start_line']}-{c['end_line']} ({c['name']})\n{c['code']}"

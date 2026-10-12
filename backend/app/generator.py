@@ -68,12 +68,13 @@ class OllamaGenerator(Generator):
             "stream": False,
             "options": {
                 "temperature": 0.0,
-                "num_predict": 512,
+                "num_predict": 1024,
+                "num_ctx": 8192,
             },
         }
 
         def _call():
-            resp = requests.post(self.api_url, json=payload, timeout=120)
+            resp = requests.post(self.api_url, json=payload, timeout=240)
             resp.raise_for_status()
             return resp.json().get("response", "")
 

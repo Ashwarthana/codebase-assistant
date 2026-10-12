@@ -11,7 +11,7 @@ class IndexRequest(BaseModel):
 class AskRequest(BaseModel):
     question: str
     mode: str = "proposed"  # "proposed" or "baseline"
-    k: int = 5  # number of chunks to retrieve
+    k: int = 15  # number of initial top candidates to retrieve
 
 
 class CitationModel(BaseModel):

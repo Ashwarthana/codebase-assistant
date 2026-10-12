@@ -126,7 +126,7 @@ class Retriever:
         cross-encoder, then deduplicated per file (max 2 per file).
         """
         # Get candidate lists
-        pool_size = k * 6
+        pool_size = max(k * 6, 60)
         dense_results = self.semantic_search(query, k=pool_size)
         bm25_results = self.bm25_search(query, k=pool_size)
 
@@ -161,12 +161,12 @@ class Retriever:
         if rerank and len(candidates) > 1:
             try:
                 ce = _get_cross_encoder()
-                pairs = [[query, chunk_embed_text(c)] for c, _ in candidates[:20]]
+                pairs = [[query, chunk_embed_text(c)] for c, _ in candidates[:50]]
                 ce_scores = ce.predict(pairs)
                 # Convert raw logits to probabilities (0.0 to 1.0)
                 ce_scores = 1.0 / (1.0 + np.exp(-ce_scores))
                 reranked = sorted(
-                    zip([c for c, _ in candidates[:20]], ce_scores),
+                    zip([c for c, _ in candidates[:50]], ce_scores),
                     key=lambda x: x[1],
                     reverse=True,
                 )
@@ -174,13 +174,13 @@ class Retriever:
             except Exception:
                 pass  # Fall back to RRF order if cross-encoder fails
 
-        # ── File diversity: max 2 chunks per file ──
+        # ── File diversity: relaxed limit to capture complete file context ──
         best_per_file: Dict[str, List[Tuple[dict, float]]] = {}
         for chunk, score in candidates:
             f = chunk["file"]
             if f not in best_per_file:
                 best_per_file[f] = []
-            if len(best_per_file[f]) < 2:
+            if len(best_per_file[f]) < 10:
                 best_per_file[f].append((chunk, score))
 
         deduped = []
